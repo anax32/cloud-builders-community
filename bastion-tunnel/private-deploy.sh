@@ -1,4 +1,4 @@
-#!/bin/bash -xue
+#!/bin/bash -ue
 
 #
 # private-deploy
@@ -16,12 +16,18 @@
 #     This causes a tight-coupling.
 #
 
+# trim whitespace from variables
+function trim()
+{
+  echo $(echo $1 | tr -d "[:blank:]")
+}
+
 FUNCTION=$1
 
 if [ $FUNCTION == "prepare" ]; then
   echo "prepare doesn't need any tunnels"
   retval=$(/gke-deploy $@)
-  exit $retval
+  exit 0
 fi
 
 # else we are 'apply' or 'run'
@@ -30,30 +36,32 @@ fi
 shift
 
 # parse the command line
-while getopts "f:c:n:l:b:k:" opt ; do
+while getopts "f:c:n:l:b:k:p:" opt ; do
   case "$opt" in
-  f) YAML_FILE="$OPTARG" ;;
-  c) GKE_CLUSTER="$OPTARG" ;;
-  n) NAMESPACE="$OPTARG" ;;
-  l) export ZONE="$OPTARG" ;;
+  f) YAML_FILE=$(trim "$OPTARG") ;;
+  c) GKE_CLUSTER=$(trim "$OPTARG") ;;
+  n) NAMESPACE=$(trim "$OPTARG") ;;
+  l) export ZONE=$(trim "$OPTARG") ;;
+  p) export GOOGLE_CLOUD_PROJECT=$(trim "$OPTARG") ;;
   \?) echo "kek-deploy nut!" ;;
   esac
 done
 
 # local variables
-# VM name regex is: '(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)'
-export BASTION_NAME=$(echo $GKE_CLUSTER"-bastion-$(echo /dev/random | md5sum | cut -d' ' -f1)" | cut -c -61)
+# VM name regex is: '(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)' so create something similar
+export BASTION_NAME=${GKE_CLUSTER:0:20}"-bastion-"$(openssl rand -hex 4)"-"$(openssl rand -hex 2)
 export SSH_KEY_PATH="/builder/home/.ssh/cloudbuilder"
 export PROXY_PORT=1080
 
-# create the bastion vm
+# create the bastion machine and execute a startup script
+# to set the allow-root access flag in sshconfigd
 ( cd /usr/local/bin ; ./create-bastion-vm.sh )
 
 # create the ssh key for this cloudbuilder
 mkdir -p $(dirname ${SSH_KEY_PATH})
-ssh-keygen -t rsa -f ${SSH_KEY_PATH} -N ''
+ssh-keygen -q -t rsa -f ${SSH_KEY_PATH} -N ''
 
-# register against the project
+# register the against the project and create the ssh tunnel
 gcloud compute ssh root@${BASTION_NAME} \
   --project ${GOOGLE_CLOUD_PROJECT} \
   --zone ${ZONE} \
@@ -79,9 +87,21 @@ export http_proxy=socks5://localhost:${PROXY_PORT}
 export https_proxy=socks5://localhost:${PROXY_PORT}
 
 # call the standard gke-deploy function (prepare, apply, run)
-/gke-deploy $FUNCTION $@
+# FIXME: gke-deploy hangs here after outputting:
+#  'Getting access to cluster "private-deployment-test" in "europe-west2-a"'
+# missing env var?
+#/gke-deploy $FUNCTION $@
+# kubectl apply works:
+# FIXME: use the yaml file from the output directory
+kubectl apply -f ${YAML_FILE}
+
+# unset the proxy details or gcloud won't work
+unset HTTP_PROXY
+unset HTTPS_PROXY
+unset http_proxy
+unset https_proxy
 
 # remove the bastion vm
 ( cd /usr/local/bin ; ./delete-bastion-vm.sh )
 
-# remove the ssh key
+# all done

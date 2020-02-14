@@ -1,0 +1,12 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud builds submit . --config=cloudbuild.yaml
+
+# deploy to a private kubernetes cluster with a bastion machine and ssh tunnel
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ "build", "-t", "gcr.io/$PROJECT_ID/private-deploy", "-t", "gcr.io/$PROJECT_ID/private-deploy:$SHORT_SHA", "." ]
+images:
+- 'gcr.io/$PROJECT_ID/private-deploy:latest'
+- 'gcr.io/$PROJECT_ID/private-deploy:$SHORT_SHA'
+
+tags: ['cloud-builders-community']
