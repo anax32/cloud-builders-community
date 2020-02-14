@@ -1,0 +1,43 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud builds submit . --config=cloudbuild.yaml
+
+# setup an ssh tunnel to a bastion machine so we can deploy to a private kubernetes cluster
+steps:
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: sh
+  env:
+    - KUBECONFIG=/workspace/kubeconfig
+  args:
+    - -cex
+    - |
+      mkdir -p $(basename $(_SSH_KEY_PATH))
+      ssh-keygen -t rsa -f $(_SSH_KEY_PATH) -N || true
+
+      gcloud compute ssh root@$_BASTION_NAME \
+        --project $PROJECT_ID \
+        --zone $_GKE_LOCATION \
+        --ssh-key-expire-after 1h \
+        -- -D $_PROXY_PORT -f -N
+
+      # get credentials for connecting to the cluster
+      gcloud container clusters \
+        get-credentials $_GKE_CLUSTER \
+        --project $PROJECT_ID \
+        --zone $_GKE_LOCATION \
+        --verbosity="info"
+
+      kubectl config view -v 4
+
+      export HTTP_PROXY=socks5://localhost:$_PROXY_PORT
+      export HTTPS_PROXY=socks5://localhost:$_PROXY_PORT
+      export http_proxy=socks5://localhost:$_PROXY_PORT
+      export https_proxy=socks5://localhost:$_PROXY_PORT
+
+images:
+- 'gcr.io/$PROJECT_ID/sshtunel:latest'
+- 'gcr.io/$PROJECT_ID/sshtunnel:1'
+
+tags: ['cloud-builders-community']
+
+substitutions:
+  _SSH_KEY_PATH: /builder/home/.ssh/cloudbuilder
