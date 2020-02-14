@@ -1,8 +1,7 @@
 FROM gcr.io/cloud-builders/gke-deploy
 
-ENV SSH_KEY_PATH="/builder/home/.ssh/cloudbuilder"
-ENV BASTION_NAME="bastion-vm"
-ENV PROXY_PORT="1080"
+RUN apk add --update openssl && \
+    rm -rf /var/cache/apk/*
 
 COPY create-bastion-vm.sh /usr/local/bin/create-bastion-vm.sh
 COPY delete-bastion-vm.sh /usr/local/bin/delete-bastion-vm.sh
