@@ -9,4 +9,4 @@ gcloud compute instances create \
   --machine-type ${MACHINE_TYPE:-"f1-micro"} \
   --subnet ${SUBNET:-"default"} \
   --metadata-from-file \
-      startup-script=update-ssh-config.sh
+      startup-script=vm-startup-script.sh
