@@ -22,34 +22,14 @@ function trim()
   echo $(echo $1 | tr -d "[:blank:]")
 }
 
-FUNCTION=$1
-
-if [ $FUNCTION == "prepare" ]; then
-  echo "prepare doesn't need any tunnels"
-  retval=$(/gke-deploy $@)
-  exit 0
-fi
-
-# else we are 'apply' or 'run'
-
-# shift the command line along one so getopts works correctly
-shift
-
-# parse the command line
-while getopts "f:c:n:l:b:k:p:" opt ; do
-  case "$opt" in
-  f) YAML_FILE=$(trim "$OPTARG") ;;
-  c) GKE_CLUSTER=$(trim "$OPTARG") ;;
-  n) NAMESPACE=$(trim "$OPTARG") ;;
-  l) export ZONE=$(trim "$OPTARG") ;;
-  p) export GOOGLE_CLOUD_PROJECT=$(trim "$OPTARG") ;;
-  \?) echo "kek-deploy nut!" ;;
-  esac
-done
+function make_vm_name()
+{
+  echo ${1:0:20}"-bastion-"$(openssl rand -hex 4)"-"$(openssl rand -hex 2)
+}
 
 # local variables
 # VM name regex is: '(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)' so create something similar
-export BASTION_NAME=${GKE_CLUSTER:0:20}"-bastion-"$(openssl rand -hex 4)"-"$(openssl rand -hex 2)
+export BASTION_NAME=$(make_vm_name ${GKE_CLUSTER})
 export SSH_KEY_PATH="/builder/home/.ssh/cloudbuilder"
 export PROXY_PORT=1080
 
@@ -72,13 +52,13 @@ gcloud compute ssh root@${BASTION_NAME} \
 # get creds to the kubernetes cluster
 gcloud container clusters get-credentials ${GKE_CLUSTER} \
   --project ${GOOGLE_CLOUD_PROJECT} \
-  --zone ${ZONE} \
-  --verbosity="info"
+  --zone ${ZONE}
 
 # FIXME: for some reason we have to call this here, or
 #        later kubectl calls fail; maybe some initialisation
 #        on first kubectl call?
-kubectl config view -v 4
+# redirect to dev null because keys
+kubectl config view -v 4 > /dev/null
 
 # export the proxy vars now
 export HTTP_PROXY=socks5://localhost:${PROXY_PORT}
@@ -86,14 +66,10 @@ export HTTPS_PROXY=socks5://localhost:${PROXY_PORT}
 export http_proxy=socks5://localhost:${PROXY_PORT}
 export https_proxy=socks5://localhost:${PROXY_PORT}
 
-# call the standard gke-deploy function (prepare, apply, run)
-# FIXME: gke-deploy hangs here after outputting:
-#  'Getting access to cluster "private-deployment-test" in "europe-west2-a"'
-# missing env var?
-#/gke-deploy $FUNCTION $@
-# kubectl apply works:
-# FIXME: use the yaml file from the output directory
-kubectl apply -f ${YAML_FILE}
+# NB: gke-deploy hangs if gcloud commands are executed because the
+# metadata server rejects proxied requests, so use kubectl directly
+# call kubectl with the command args directly
+kubectl $@
 
 # unset the proxy details or gcloud won't work
 unset HTTP_PROXY
