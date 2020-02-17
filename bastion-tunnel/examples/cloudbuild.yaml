@@ -1,0 +1,20 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud builds submit . --config=cloudbuild.yaml
+
+# setup an ssh tunnel to a bastion machine so we can deploy to a private kubernetes cluster
+steps:
+- id: "apply step"
+  name: 'gcr.io/$PROJECT_ID/private-deploy'
+  env:
+    - GKE_CLUSTER=${_GKE_CLUSTER_NAME}
+    - GKE_NAMESPACE=${_GKE_NAMESPACE}
+    - ZONE=${_GKE_CLUSTER_ZONE}
+    - GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
+  args:
+    - apply
+    - -f nginx.yaml
+
+substitutions:
+  _GKE_CLUSTER_NAME: "private-deployment-test"
+  _GKE_CLUSTER_ZONE: "europe-west2-a"
+  _GKE_NAMESPACE: "default"
