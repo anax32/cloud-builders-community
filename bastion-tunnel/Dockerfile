@@ -5,7 +5,6 @@ RUN apk add --update openssl && \
 
 COPY create-bastion-vm.sh /usr/local/bin/create-bastion-vm.sh
 COPY delete-bastion-vm.sh /usr/local/bin/delete-bastion-vm.sh
-COPY update-ssh-config.sh /usr/local/bin/update-ssh-config.sh
 COPY private-deploy.sh /private-deploy
 
 ENTRYPOINT ["/private-deploy"]
