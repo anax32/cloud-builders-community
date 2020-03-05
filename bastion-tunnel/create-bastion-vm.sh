@@ -9,4 +9,6 @@ gcloud compute instances create \
   --machine-type ${MACHINE_TYPE:-"f1-micro"} \
   --subnet ${SUBNET:-"default"} \
   --metadata-from-file \
-      startup-script=vm-startup-script.sh
+      startup-script=vm-startup-script.sh \
+  --labels ${BASTION_LABELS:-"type=bastion-vm"} \
+  --tags ${BASTION_TAGS:-"bastion-vm"}
