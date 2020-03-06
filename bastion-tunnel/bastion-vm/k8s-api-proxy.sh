@@ -5,9 +5,9 @@ set -o pipefail
 set -o nounset
 
 # Get the internal cluster IP
-export TOKEN=$(cat /run/secrets/kubernetes.io/serviceaccount/token)
-INTERNAL_IP=$(curl -H "Authorization: Bearer $TOKEN" -k -SsL https://kubernetes.default/api |
-jq -r '.serverAddressByClientCIDRs[0].serverAddress')
+#export TOKEN=$(cat /run/secrets/kubernetes.io/serviceaccount/token)
+#INTERNAL_IP=$(curl -H "Authorization: Bearer $TOKEN" -k -SsL https://kubernetes.default/api |
+#jq -r '.serverAddressByClientCIDRs[0].serverAddress')
 
 # Replace CLUSTER_IP in the rewrite filter and action file
 sed -i "s/CLUSTER_PRIVATE_IP/${CLUSTER_PRIVATE_IP}/g" /etc/privoxy/k8s-rewrite-internal.filter
