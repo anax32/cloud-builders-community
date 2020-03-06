@@ -7,7 +7,7 @@ steps:
   name: "gcr.io/cloud-builders/docker"
   args: ["build", "-t", "$_REPOSITORY/$PROJECT_ID/private-deploy",
                   "-t", "$_REPOSITORY/$PROJECT_ID/private-deploy:$SHORT_SHA",
-         "./cloudbuilder" ]
+         "./builder" ]
 
 - id: "bastion privoxy container"
   name: "gcr.io/cloud-builders/docker"
