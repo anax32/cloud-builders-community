@@ -12,5 +12,3 @@ COPY vm-startup-script.sh /usr/local/bin/vm-startup-script.sh
 COPY private-deploy.sh /private-deploy
 
 ENTRYPOINT ["/private-deploy"]
-
-EXPOSE $PROXY_PORT
