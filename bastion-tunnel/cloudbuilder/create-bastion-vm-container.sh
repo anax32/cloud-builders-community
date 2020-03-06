@@ -1,5 +1,8 @@
 #!/bin/sh -u
 
+#CONTAINER_NAME=eu.gcr.io/${GOOGLE_CLOUD_PROJECT}/private-deploy-proxy
+CONTAINER_NAME=vimagick/privoxy
+
 # create the bastion machine and execute a startup script
 # which sets the allow-root access flag in sshconfigd
 gcloud compute instances \
@@ -10,8 +13,7 @@ gcloud compute instances \
     --machine-type ${MACHINE_TYPE:-"f1-micro"} \
     --network ${NETWORK:-"default"} \
     --subnet ${SUBNET:-"default"} \
-    --container-image=eu.gcr.io/${GOOGLE_CLOUD_PROJECT}/private-deploy-proxy \
-    --metadata-from-file \
-        startup-script=vm-startup-script.sh \
+    --container-image=${CONTAINER_NAME} \
+    --container-env=CLUSTER_PRIVATE_IP=${CLUSTER_PRIVATE_IP} \
     --labels ${BASTION_LABELS:-"type=bastion-vm"} \
     --tags ${BASTION_TAGS:-"bastion-vm"}
