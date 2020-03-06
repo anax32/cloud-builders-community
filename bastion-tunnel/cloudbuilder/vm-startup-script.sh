@@ -5,7 +5,7 @@ sudo sed -i -e 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config
 sudo service sshd restart
 
 # open the kubectl port
-sudo iptables -A INPUT -p tcp -m tcp --dport 6443 -j ACCEPT
+sudo iptables -A INPUT -p tcp -m tcp --dport 8118 -j ACCEPT
 
 # self deleting vm
 # https://cloud.google.com/community/tutorials/create-a-self-deleting-virtual-machine

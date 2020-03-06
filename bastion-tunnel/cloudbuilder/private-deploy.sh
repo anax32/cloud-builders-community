@@ -28,31 +28,46 @@ function make_vm_name()
 }
 
 # local variables
+#export SSH_KEY_PATH="/builder/home/.ssh/cloudbuilder"
+export PROXY_PORT=8118
+
+# get creds to the kubernetes cluster; set the internal ip
+# because our bastion should be on the same subnet as the
+# cluster, and we don't want to use master authed networks
+gcloud container clusters get-credentials ${GKE_CLUSTER} \
+  --project ${GOOGLE_CLOUD_PROJECT} \
+  --region ${REGION} \
+  --internal-ip
+
+export CLUSTER_PRIVATE_IP=$(gcloud container clusters \
+                              describe \
+                                ${GKE_CLUSTER} \
+                                --region ${REGION} \
+                                --format="get(privateClusterConfig.privateEndpoint)")
+
+echo "CLUSTER_PRIVATE_IP:'${CLUSTER_PRIVATE_IP}'"
+
+#
+# BASTION CREATE
+#
+
 # VM name regex is: '(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)' so create something similar
 export BASTION_NAME=$(make_vm_name ${GKE_CLUSTER})
-export SSH_KEY_PATH="/builder/home/.ssh/cloudbuilder"
-export PROXY_PORT=1080
+
+echo "creating bastion '${BASTION_NAME}'"
 
 # create the bastion machine and execute a startup script
 # to set the allow-root access flag in sshconfigd
 ( cd /usr/local/bin ; ./create-bastion-vm.sh )
 
-# create the ssh key for this cloudbuilder
-mkdir -p $(dirname ${SSH_KEY_PATH})
-ssh-keygen -q -t rsa -f ${SSH_KEY_PATH} -N ''
+# get the bastion IP
+export BASTION_IP=$(gcloud compute instances \
+                      describe \
+                        ${BASTION_NAME} \
+                        --zone ${ZONE} \
+                        --format="get(networkInterfaces[0].accessConfigs[0].natIP)")
 
-# register the against the project and create the ssh tunnel
-gcloud compute ssh root@${BASTION_NAME} \
-  --project ${GOOGLE_CLOUD_PROJECT} \
-  --zone ${ZONE} \
-  --ssh-key-expire-after 1h \
-  --ssh-key-file ${SSH_KEY_PATH} \
-  -- -D ${PROXY_PORT} -f -N
-
-# get creds to the kubernetes cluster
-gcloud container clusters get-credentials ${GKE_CLUSTER} \
-  --project ${GOOGLE_CLOUD_PROJECT} \
-  --zone ${ZONE}
+echo "BASTION_IP: '${BASTION_IP}'"
 
 # FIXME: for some reason we have to call this here, or
 #        later kubectl calls fail; maybe some initialisation
@@ -61,10 +76,15 @@ gcloud container clusters get-credentials ${GKE_CLUSTER} \
 kubectl config view -v 4 > /dev/null
 
 # export the proxy vars now
-export HTTP_PROXY=socks5://localhost:${PROXY_PORT}
-export HTTPS_PROXY=socks5://localhost:${PROXY_PORT}
-export http_proxy=socks5://localhost:${PROXY_PORT}
-export https_proxy=socks5://localhost:${PROXY_PORT}
+export HTTP_PROXY=http://${BASTION_IP}:${PROXY_PORT}
+export HTTPS_PROXY=http://${BASTION_IP}:${PROXY_PORT}
+export http_proxy=http://${BASTION_IP}:${PROXY_PORT}
+export https_proxy=http://${BASTION_IP}:${PROXY_PORT}
+
+echo "doing get pods now..."
+
+kubectl cluster-info
+kubectl get pods
 
 # NB: gke-deploy hangs if gcloud commands are executed because the
 # metadata server rejects proxied requests, so use kubectl directly
