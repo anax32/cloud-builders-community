@@ -1,4 +1,4 @@
-#!/bin/bash -ue
+#!/bin/bash -u
 
 #
 # private-deploy
@@ -68,6 +68,25 @@ export BASTION_IP=$(gcloud compute instances \
                         --format="get(networkInterfaces[0].accessConfigs[0].natIP)")
 
 echo "BASTION_IP: '${BASTION_IP}'"
+
+#
+# keep hitting the proxy endpoint until we get a 200 (or 10 minutes...)
+# FIXME: have a timeout/iter-max variable. cloudbuild will timeout anyway tho...
+#
+MAX_ITERS=4
+ITER_DURATION=6s
+for ((i=0;i<$MAX_ITERS;i++))
+do
+  RESP=$(curl -ks -o /dev/null -I -X GET --proxy ${BASTION_IP}:${PROXY_PORT} https://${CLUSTER_PRIVATE_IP} -w "%{http_code}")
+  echo "RESP is '$RESP'"
+
+  if [[ $RESP == "403" ]]; then
+    echo -e "\e[32mbastion responded '$RESP'"
+    break
+  fi
+  echo -e "\e[31mwaiting for bastion to come up...\e[0m"
+  sleep ${ITER_DURATION}
+done
 
 # FIXME: for some reason we have to call this here, or
 #        later kubectl calls fail; maybe some initialisation
