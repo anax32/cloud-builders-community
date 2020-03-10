@@ -78,10 +78,9 @@ ITER_DURATION=6s
 for ((i=0;i<$MAX_ITERS;i++))
 do
   RESP=$(curl -ks -o /dev/null -I -X GET --proxy ${BASTION_IP}:${PROXY_PORT} https://${CLUSTER_PRIVATE_IP} -w "%{http_code}")
-  echo "RESP is '$RESP'"
 
   if [[ $RESP == "403" ]]; then
-    echo -e "\e[32mbastion responded '$RESP'"
+    echo -e "\e[32mbastion responded '$RESP'\e[0m"
     break
   fi
   echo -e "\e[31mwaiting for bastion to come up...\e[0m"
