@@ -1,5 +1,3 @@
-# https://cloud.google.com/solutions/creating-kubernetes-engine-private-clusters-with-net-proxies#creating_the_docker_image
-# thanks for all your hard work guys, appreciate it
 FROM alpine
 
 # FIXME: what's going on with the directory moves?
