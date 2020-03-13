@@ -1,6 +1,7 @@
 FROM gcr.io/cloud-builders/gke-deploy
 
 RUN apk add --update \
+      gettext \
       openssl \
       jq \
     && \
