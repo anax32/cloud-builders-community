@@ -27,6 +27,10 @@ function make_vm_name()
   echo ${1:0:20}"-bastion-"$(openssl rand -hex 4)"-"$(openssl rand -hex 2)
 }
 
+# limits for waiting for processes
+MAX_ITERS=4
+ITER_DURATION=6s
+
 # local variables
 #export SSH_KEY_PATH="/builder/home/.ssh/cloudbuilder"
 export PROXY_PORT=8118
@@ -73,14 +77,18 @@ echo "BASTION_IP: '${BASTION_IP}'"
 # keep hitting the proxy endpoint until we get a 200 (or 10 minutes...)
 # FIXME: have a timeout/iter-max variable. cloudbuild will timeout anyway tho...
 #
-MAX_ITERS=4
-ITER_DURATION=6s
-for ((i=0;i<$MAX_ITERS;i++))
+for ((i=0;i<${MAX_ITERS};i++))
 do
-  RESP=$(curl -ks -o /dev/null -I -X GET --proxy ${BASTION_IP}:${PROXY_PORT} https://${CLUSTER_PRIVATE_IP} -w "%{http_code}")
+  RESPONSE=$(curl -ks \
+               --output /dev/null \
+               --write-out "%{http_code}" \
+               --head \
+               --request GET \
+               --proxy ${BASTION_IP}:${PROXY_PORT} \
+               https://${CLUSTER_PRIVATE_IP})
 
-  if [[ $RESP == "403" ]]; then
-    echo -e "\e[32mbastion responded '$RESP'\e[0m"
+  if [[ ${RESPONSE} == "403" ]]; then
+    echo -e "\e[32mbastion responded '$RESPONSE'\e[0m"
     break
   fi
   echo -e "\e[31mwaiting for bastion to come up...\e[0m"
