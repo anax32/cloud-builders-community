@@ -1,15 +1,21 @@
 #! /bin/bash -u
 
-# allow root ssh access
-sudo sed -i -e 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config
-sudo service sshd restart
-
-# open the kubectl port
-sudo iptables -A INPUT -p tcp -m tcp --dport 8118 -j ACCEPT
-
-# self deleting vm
+#
+# self deleting vm without gcloud
+#
 # https://cloud.google.com/community/tutorials/create-a-self-deleting-virtual-machine
-sleep 3600s
-export NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google')
-export ZONE=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google')
-gcloud --quiet compute instances delete $NAME --zone=$ZONE
+
+# we can't call gcloud commands directly because the gcloud-sdk install time
+# is too high; so run the curl command directly with variables set from the cloudbuild
+# environment via envsubst
+
+# rather than set the envvars in the script, we set them via envsubst in the caller and
+# pass the script through with variables replaced; this avoids passing variables into
+# the VM, but obviously the values are still communicated...
+
+export HEADER="Authorization: Bearer ${OAUTH_TOKEN}"
+export URI="https://compute.googleapis.com/compute/v1/projects/${GOOGLE_CLOUD_PROJECT}/zones/${ZONE}/instances/${BASTION_NAME}"
+
+# run the command in a subshell and return immediately, otherwise the host machine
+# doesn't run the konlet container and get on with the job.
+nohup ( sleep 260s; curl -s -H ${HEADER} -X DELETE ${URI} ) & disown
