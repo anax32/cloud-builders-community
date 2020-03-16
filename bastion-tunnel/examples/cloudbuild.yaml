@@ -8,13 +8,20 @@ steps:
   env:
     - GKE_CLUSTER=${_GKE_CLUSTER_NAME}
     - GKE_NAMESPACE=${_GKE_NAMESPACE}
-    - ZONE=${_GKE_CLUSTER_ZONE}
+    - ZONE=${_GKE_BASTION_ZONE}
+    - REGION=${_GKE_CLUSTER_REGION}
+    - NETWORK=${_BASTION_NETWORK}
+    - SUBNET=${_BASTION_SUBNET}
     - GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
   args:
     - apply
-    - -f nginx.yaml
+    - -f my-deployment.yaml
 
 substitutions:
   _GKE_CLUSTER_NAME: "private-deployment-test"
-  _GKE_CLUSTER_ZONE: "europe-west2-a"
+  _GKE_NAMESPACE: "default"
+  _GKE_CLUSTER_REGION: europe-west2
+  _BASTION_ZONE: europe-west2-a
+  _BASTION_NETWORK: k8s
+  _BASTION_SUBNET: nodes
   _GKE_NAMESPACE: "default"
