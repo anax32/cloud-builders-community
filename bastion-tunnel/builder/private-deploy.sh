@@ -116,6 +116,7 @@ kubectl get pods
 # metadata server rejects proxied requests, so use kubectl directly
 # call kubectl with the command args directly
 kubectl $@
+retval=$?
 
 # unset the proxy details or gcloud won't work
 unset HTTP_PROXY
@@ -127,3 +128,4 @@ unset https_proxy
 ( cd /usr/local/bin ; ./delete-bastion-vm.sh )
 
 # all done
+exit $retval
