@@ -107,6 +107,11 @@ export HTTPS_PROXY=http://${BASTION_IP}:${PROXY_PORT}
 export http_proxy=http://${BASTION_IP}:${PROXY_PORT}
 export https_proxy=http://${BASTION_IP}:${PROXY_PORT}
 
+# create firewall rule for bastion to talk to cloudbuild
+gcloud compute firewall-rules create "bastion-cloudbuild-8118" \
+--allow=tcp:8118 \
+--source-ranges=${CLUSTER_PRIVATE_IP}
+
 echo "doing get pods now..."
 
 kubectl cluster-info
@@ -117,6 +122,9 @@ kubectl get pods
 # call kubectl with the command args directly
 kubectl $@
 retval=$?
+
+# delete firewall rule
+gcloud compute firewall-rules delete bastion-cloudbuild-8118
 
 # unset the proxy details or gcloud won't work
 unset HTTP_PROXY
